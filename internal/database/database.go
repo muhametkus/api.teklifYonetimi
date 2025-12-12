@@ -1,45 +1,52 @@
 package database
 
 import (
-	"api.teklifYonetimi/internal/config"
-	"database/sql"
-	"fmt"
-	"log"
+    "fmt"
+    "log"
+    "api.teklifYonetimi/internal/config"
+    "api.teklifYonetimi/internal/models"
 
-	_ "github.com/lib/pq" // PostgreSQL driver
+    "gorm.io/driver/postgres"
+    "gorm.io/gorm"
 )
 
-func InitDB(cfg *config.Config) *sql.DB {
-	// Şimdilik database bağlantısı olmadan çalışacak
-	// İleride PostgreSQL bağlantısı eklenebilir
-	log.Println("Database initialization skipped (not configured yet)")
-	return nil
+var DB *gorm.DB
+
+func Connect() {
+    host := config.GetEnv("DB_HOST")
+    port := config.GetEnv("DB_PORT")
+    user := config.GetEnv("DB_USER")
+    pass := config.GetEnv("DB_PASS")
+    name := config.GetEnv("DB_NAME")
+    ssl  := config.GetEnv("DB_SSL")
+
+    dsn := fmt.Sprintf(
+        "host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
+        host, user, pass, name, port, ssl,
+    )
+
+    db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+    if err != nil {
+        log.Fatalf("❌ Database bağlantı hatası: %v", err)
+    }
+
+    log.Println("✅ Database bağlantısı başarılı!")
+    DB = db
+
+    migrate()
 }
 
-func CloseDB(db *sql.DB) {
-	if db != nil {
-		if err := db.Close(); err != nil {
-			log.Printf("Error closing database: %v", err)
-		}
-	}
-}
+func migrate() {
+    err := DB.AutoMigrate(
+        &models.Company{},
+        &models.User{},
+        &models.Quotation{},
+        &models.QuotationItem{},
+    )
 
-// PostgreSQL bağlantı örneği (şimdilik kullanılmıyor)
-func connectPostgreSQL(cfg *config.Config) (*sql.DB, error) {
-	dsn := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName,
-	)
+    if err != nil {
+        log.Fatalf("❌ Migration hatası: %v", err)
+    }
 
-	db, err := sql.Open("postgres", dsn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
-	}
-
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to ping database: %w", err)
-	}
-
-	log.Println("Database connected successfully")
-	return db, nil
+    log.Println("✅ Modeller başarıyla migrate edildi!")
 }

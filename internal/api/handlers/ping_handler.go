@@ -1,27 +1,9 @@
 package handlers
 
-import (
-	"api.teklifYonetimi/internal/utils"
-	"net/http"
+import "github.com/gin-gonic/gin"
 
-	"github.com/gin-gonic/gin"
-)
-
-type PingHandler struct{}
-
-func NewPingHandler() *PingHandler {
-	return &PingHandler{}
-}
-
-func (h *PingHandler) Ping(c *gin.Context) {
-	utils.SuccessResponse(c, http.StatusOK, "pong", gin.H{
-		"message": "Server is running",
-		"status":  "healthy",
-	})
-}
-
-func (h *PingHandler) Hello(c *gin.Context) {
-	utils.SuccessResponse(c, http.StatusOK, "Hello endpoint", gin.H{
-		"message": "Merhaba Go!",
-	})
+func PingHandler(c *gin.Context) {
+    c.JSON(200, gin.H{
+        "message": "pong",
+    })
 }

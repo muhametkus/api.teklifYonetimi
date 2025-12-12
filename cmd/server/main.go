@@ -1,31 +1,21 @@
 package main
 
 import (
-	"api.teklifYonetimi/internal/api/routes"
-	"api.teklifYonetimi/internal/config"
-	"api.teklifYonetimi/internal/database"
-	"log"
+    "api.teklifYonetimi/internal/api/routes"
+    "api.teklifYonetimi/internal/config"
+    "api.teklifYonetimi/internal/database"
 
-	"github.com/gin-gonic/gin"
+    "github.com/gin-gonic/gin"
 )
 
 func main() {
-	// Config yükleme
-	cfg := config.LoadConfig()
+    config.LoadEnv()
 
-	// Database bağlantısı
-	db := database.InitDB(cfg)
-	defer database.CloseDB(db)
+    database.Connect()
 
-	// Gin router oluşturma
-	r := gin.Default()
+    r := gin.Default()
 
-	// Routes kaydetme
-	routes.RegisterRoutes(r, db)
+    routes.RegisterRoutes(r)
 
-	// Server başlatma
-	log.Printf("Server starting on port %s...", cfg.ServerPort)
-	if err := r.Run(":" + cfg.ServerPort); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
-	}
+    r.Run(":8082")
 }
