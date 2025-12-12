@@ -1,11 +1,15 @@
 package routes
 
 import (
-    "github.com/gin-gonic/gin"
     "api.teklifYonetimi/internal/api/handlers"
+
+    "github.com/gin-gonic/gin"
 )
 
 func RegisterRoutes(r *gin.Engine) {
-    // Basit test endpoint
+    // Test endpoint
     r.GET("/ping", handlers.PingHandler)
+
+    // Company routes
+    RegisterCompanyRoutes(r)
 }
