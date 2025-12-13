@@ -12,4 +12,13 @@ func RegisterRoutes(r *gin.Engine) {
 
     // Company routes
     RegisterCompanyRoutes(r)
+
+    // User routes
+    RegisterUserRoutes(r)
+
+    // Auth routes
+    RegisterAuthRoutes(r)
+
+    // Quotation routes
+    RegisterQuotationRoutes(r)
 }

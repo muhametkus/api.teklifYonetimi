@@ -146,3 +146,32 @@ func (h *CompanyHandler) UpdateCompany(c *gin.Context) {
         "data":    company,
     })
 }
+
+
+// DeleteCompany
+// DELETE /companies/:id
+func (h *CompanyHandler) DeleteCompany(c *gin.Context) {
+    idParam := c.Param("id")
+
+    id, err := strconv.ParseUint(idParam, 10, 64)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{
+            "success": false,
+            "error":   "Geçersiz company id",
+        })
+        return
+    }
+
+    if err := h.service.DeleteCompany(uint(id)); err != nil {
+        c.JSON(http.StatusNotFound, gin.H{
+            "success": false,
+            "error":   "Company bulunamadı",
+        })
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "message": "Company silindi",
+    })
+}

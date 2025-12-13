@@ -49,3 +49,10 @@ func (r *CompanyRepository) Update(company *models.Company) error {
     return database.DB.Save(company).Error
 }
 
+
+// Delete
+// Company kaydını siler
+func (r *CompanyRepository) Delete(company *models.Company) error {
+    return database.DB.Delete(company).Error
+}
+

@@ -82,3 +82,15 @@ func (s *CompanyService) UpdateCompany(
 
     return company, nil
 }
+
+
+// DeleteCompany
+// Company kaydını siler
+func (s *CompanyService) DeleteCompany(id uint) error {
+    company, err := s.repo.FindByID(id)
+    if err != nil {
+        return err
+    }
+
+    return s.repo.Delete(company)
+}
