@@ -28,7 +28,7 @@ import (
 // @in header
 // @name Authorization
 func main() {
-    config.LoadEnv()
+    cfg := config.LoadConfig()
 
     database.Connect()
 	
@@ -38,5 +38,5 @@ func main() {
 
     routes.RegisterRoutes(r)
 
-    r.Run(":8082")
+    r.Run(":" + cfg.ServerPort)
 }

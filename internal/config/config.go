@@ -22,7 +22,7 @@ func LoadConfig() *Config {
     }
 
     return &Config{
-        ServerPort: getEnvOrDefault("SERVER_PORT", "8081"),
+        ServerPort: getEnvOrDefault("SERVER_PORT", "8082"),
         DBHost:     os.Getenv("DB_HOST"),
         DBPort:     os.Getenv("DB_PORT"),
         DBUser:     os.Getenv("DB_USER"),
