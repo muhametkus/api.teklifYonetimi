@@ -3,31 +3,27 @@ package utils
 import (
 	"context"
 	"net/url"
-	"os"
 	"time"
 
 	"github.com/chromedp/chromedp"
 	"github.com/chromedp/cdproto/page"
 )
 
-// GeneratePDFFromHTML
-// htmlContent: render edilmiş HTML
-func GeneratePDFFromHTML(htmlContent string, outputPath string) error {
 
-	// 1️⃣ Chrome context
+// GeneratePDFFromHTMLBytes
+// HTML'i PDF'e çevirir ve byte slice döner
+func GeneratePDFFromHTMLBytes(htmlContent string) ([]byte, error) {
+
 	ctx, cancel := chromedp.NewContext(context.Background())
 	defer cancel()
 
-	// 2️⃣ Timeout
 	ctx, cancel = context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
 	var pdfBuffer []byte
 
-	// 3️⃣ HTML'i data URL'e çevir
 	dataURL := "data:text/html;charset=utf-8," + url.PathEscape(htmlContent)
 
-	// 4️⃣ Chrome ile PDF al
 	err := chromedp.Run(ctx,
 		chromedp.Navigate(dataURL),
 		chromedp.WaitReady("body"),
@@ -38,9 +34,9 @@ func GeneratePDFFromHTML(htmlContent string, outputPath string) error {
 		}),
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// 5️⃣ PDF yaz
-	return os.WriteFile(outputPath, pdfBuffer, 0644)
+	return pdfBuffer, nil
 }
+

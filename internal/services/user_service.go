@@ -74,3 +74,49 @@ func (s *UserService) CreateUser(
 func (s *UserService) GetAllUsers() ([]models.User, error) {
     return s.repo.FindAll()
 }
+
+// GetUserByID
+func (s *UserService) GetUserByID(id uint) (*models.User, error) {
+    return s.repo.FindByID(id)
+}
+
+// UpdateUser
+func (s *UserService) UpdateUser(id uint, name, email, password, role string) (*models.User, error) {
+    user, err := s.repo.FindByID(id)
+    if err != nil {
+        return nil, err
+    }
+
+    if name != "" {
+        user.Name = name
+    }
+    if email != "" {
+        // Check if email is taken by another user
+        existingUser, err := s.repo.FindByEmail(email)
+        if err == nil && existingUser.ID != id {
+            return nil, errors.New("email zaten kullanılıyor")
+        }
+        user.Email = email
+    }
+    if password != "" {
+        hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+        if err != nil {
+            return nil, err
+        }
+        user.Password = string(hashedPassword)
+    }
+    if role != "" {
+        user.Role = models.UserRole(role)
+    }
+
+    if err := s.repo.Update(user); err != nil {
+        return nil, err
+    }
+
+    return user, nil
+}
+
+// DeleteUser
+func (s *UserService) DeleteUser(id uint) error {
+    return s.repo.Delete(id)
+}

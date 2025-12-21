@@ -4,6 +4,8 @@ import (
     "api.teklifYonetimi/internal/api/handlers"
 
     "github.com/gin-gonic/gin"
+    swaggerFiles "github.com/swaggo/files"
+    ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -21,4 +23,7 @@ func RegisterRoutes(r *gin.Engine) {
 
     // Quotation routes
     RegisterQuotationRoutes(r)
+
+    // Swagger
+    r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 }

@@ -19,3 +19,11 @@ type CreateQuotationRequest struct {
 type UpdateQuotationStatusRequest struct {
 	Status string `json:"status" binding:"required,oneof=APPROVED REJECTED"`
 }
+
+// UpdateQuotationRequest
+type UpdateQuotationRequest struct {
+    Title       string                 `json:"title"`
+    Customer    string                 `json:"customer"`
+    Description string                 `json:"description"`
+    Items       []QuotationItemRequest `json:"items"`
+}

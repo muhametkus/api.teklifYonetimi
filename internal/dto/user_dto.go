@@ -9,3 +9,12 @@ type CreateUserRequest struct {
     Role      string `json:"role"`
     CompanyID *uint  `json:"company_id"`
 }
+
+// UpdateUserRequest
+// PUT /users/:id
+type UpdateUserRequest struct {
+    Name     string `json:"name"`
+    Email    string `json:"email" binding:"omitempty,email"`
+    Password string `json:"password" binding:"omitempty,min=6"`
+    Role     string `json:"role"`
+}

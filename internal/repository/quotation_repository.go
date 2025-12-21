@@ -99,3 +99,200 @@ func (r *QuotationRepository) FindAllByCompanyPaginated(
 
 	return quotations, total, err
 }
+
+// FindPaginatedByCompany
+func (r *QuotationRepository) FindPaginatedByCompany(
+	companyID uint,
+	limit int,
+	offset int,
+) ([]models.Quotation, int64, error) {
+
+	var quotations []models.Quotation
+	var total int64
+
+	// total count
+	err := r.db.Model(&models.Quotation{}).
+		Where("company_id = ?", companyID).
+		Count(&total).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// paginated data
+	err = r.db.
+		Where("company_id = ?", companyID).
+		Preload("Items").
+		Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&quotations).Error
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return quotations, total, nil
+}
+
+// FindPaginatedByCompanyAndUser
+func (r *QuotationRepository) FindPaginatedByCompanyAndUser(
+	companyID uint,
+	userID uint,
+	limit int,
+	offset int,
+) ([]models.Quotation, int64, error) {
+
+	var quotations []models.Quotation
+	var total int64
+
+	err := r.db.Model(&models.Quotation{}).
+		Where("company_id = ? AND created_by = ?", companyID, userID).
+		Count(&total).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	err = r.db.
+		Where("company_id = ? AND created_by = ?", companyID, userID).
+		Preload("Items").
+		Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&quotations).Error
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return quotations, total, nil
+}
+
+
+// FindPaginatedFilteredByCompany
+func (r *QuotationRepository) FindPaginatedFilteredByCompany(
+	companyID uint,
+	status string,
+	customer string,
+	limit int,
+	offset int,
+) ([]models.Quotation, int64, error) {
+
+	var quotations []models.Quotation
+	var total int64
+
+	query := r.db.Model(&models.Quotation{}).
+		Where("company_id = ?", companyID)
+
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	if customer != "" {
+		query = query.Where("customer ILIKE ?", "%"+customer+"%")
+	}
+
+	err := query.Count(&total).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	err = query.
+		Preload("Items").
+		Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&quotations).Error
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return quotations, total, nil
+}
+
+// FindPaginatedFilteredByCompanyAndUser
+func (r *QuotationRepository) FindPaginatedFilteredByCompanyAndUser(
+	companyID uint,
+	userID uint,
+	status string,
+	customer string,
+	limit int,
+	offset int,
+) ([]models.Quotation, int64, error) {
+
+	var quotations []models.Quotation
+	var total int64
+
+	query := r.db.Model(&models.Quotation{}).
+		Where("company_id = ? AND created_by = ?", companyID, userID)
+
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	if customer != "" {
+		query = query.Where("customer ILIKE ?", "%"+customer+"%")
+	}
+
+	err := query.Count(&total).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	err = query.
+		Preload("Items").
+		Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&quotations).Error
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return quotations, total, nil
+}
+
+// Create
+func (r *QuotationRepository) Create(quotation *models.Quotation) error {
+	return r.db.Create(quotation).Error
+}
+
+// FindByCompanyAndUser
+func (r *QuotationRepository) FindByCompanyAndUser(companyID, userID uint) ([]models.Quotation, error) {
+	var quotations []models.Quotation
+	err := r.db.
+		Where("company_id = ? AND created_by = ?", companyID, userID).
+		Preload("Items").
+		Order("created_at desc").
+		Find(&quotations).Error
+	return quotations, err
+}
+
+// FindByIDWithItems
+func (r *QuotationRepository) FindByIDWithItems(id, companyID uint) (*models.Quotation, error) {
+	var quotation models.Quotation
+	err := r.db.
+		Where("id = ? AND company_id = ?", id, companyID).
+		Preload("Items").
+		First(&quotation).Error
+	if err != nil {
+		return nil, err
+	}
+	return &quotation, nil
+}
+
+// Update
+func (r *QuotationRepository) Update(quotation *models.Quotation) error {
+    return r.db.Save(quotation).Error
+}
+
+// Delete
+func (r *QuotationRepository) Delete(id uint) error {
+    return r.db.Delete(&models.Quotation{}, id).Error
+}
+
+// DeleteItemsByQuotationID
+func (r *QuotationRepository) DeleteItemsByQuotationID(quotationID uint) error {
+    return r.db.Where("quotation_id = ?", quotationID).Delete(&models.QuotationItem{}).Error
+}

@@ -51,6 +51,18 @@
 
 <body>
 
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    {{ if .CompanyLogo }}
+        <img src="{{ .CompanyLogo }}" style="height: 60px;" />
+    {{ end }}
+    <div style="text-align: right;">
+        <strong>{{ .CompanyName }}</strong>
+    </div>
+</div>
+
+<hr />
+
+
     <h1>TEKLİF</h1>
 
     <div class="info">

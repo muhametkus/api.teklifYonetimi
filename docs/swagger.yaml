@@ -1,0 +1,587 @@
+basePath: /
+definitions:
+  api_teklifYonetimi_internal_api_response.APIResponse:
+    properties:
+      code:
+        type: string
+      data: {}
+      message:
+        type: string
+      meta: {}
+      success:
+        type: boolean
+    type: object
+  api_teklifYonetimi_internal_dto.CreateCompanyRequest:
+    properties:
+      logo:
+        type: string
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  api_teklifYonetimi_internal_dto.CreateQuotationRequest:
+    properties:
+      customer:
+        type: string
+      description:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/api_teklifYonetimi_internal_dto.QuotationItemRequest'
+        minItems: 1
+        type: array
+      title:
+        type: string
+    required:
+    - customer
+    - items
+    - title
+    type: object
+  api_teklifYonetimi_internal_dto.CreateUserRequest:
+    properties:
+      company_id:
+        type: integer
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      role:
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
+  api_teklifYonetimi_internal_dto.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  api_teklifYonetimi_internal_dto.QuotationItemRequest:
+    properties:
+      item_name:
+        type: string
+      quantity:
+        minimum: 1
+        type: integer
+      unit_price:
+        minimum: 0
+        type: number
+    required:
+    - item_name
+    - quantity
+    - unit_price
+    type: object
+  api_teklifYonetimi_internal_dto.UpdateCompanyRequest:
+    properties:
+      logo:
+        type: string
+      name:
+        type: string
+      subscription:
+        type: string
+    type: object
+  api_teklifYonetimi_internal_dto.UpdateQuotationRequest:
+    properties:
+      customer:
+        type: string
+      description:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/api_teklifYonetimi_internal_dto.QuotationItemRequest'
+        type: array
+      title:
+        type: string
+    type: object
+  api_teklifYonetimi_internal_dto.UpdateUserRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      role:
+        type: string
+    type: object
+host: localhost:8082
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: Teklif Yönetim Sistemi API Dokümantasyonu
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Teklif Yönetimi API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Email ve şifre ile giriş yapar, JWT token döner
+      parameters:
+      - description: Giriş Bilgileri
+        in: body
+        name: login
+        required: true
+        schema:
+          $ref: '#/definitions/api_teklifYonetimi_internal_dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+      summary: Kullanıcı Girişi
+      tags:
+      - Auth
+  /companies:
+    get:
+      consumes:
+      - application/json
+      description: Tüm şirketleri listeler
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Şirketleri Listele
+      tags:
+      - Companies
+    post:
+      consumes:
+      - application/json
+      description: Yeni bir şirket kaydı oluşturur
+      parameters:
+      - description: Şirket Bilgileri
+        in: body
+        name: company
+        required: true
+        schema:
+          $ref: '#/definitions/api_teklifYonetimi_internal_dto.CreateCompanyRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Yeni Şirket Oluştur
+      tags:
+      - Companies
+  /companies/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Şirketi siler
+      parameters:
+      - description: Şirket ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Şirket Sil
+      tags:
+      - Companies
+    get:
+      consumes:
+      - application/json
+      description: ID'ye göre şirket detayını getirir
+      parameters:
+      - description: Şirket ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Şirket Detayı
+      tags:
+      - Companies
+    put:
+      consumes:
+      - application/json
+      description: Şirket bilgilerini günceller
+      parameters:
+      - description: Şirket ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Güncelleme Bilgileri
+        in: body
+        name: company
+        required: true
+        schema:
+          $ref: '#/definitions/api_teklifYonetimi_internal_dto.UpdateCompanyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Şirket Güncelle
+      tags:
+      - Companies
+  /quotations:
+    get:
+      consumes:
+      - application/json
+      description: Filtreleme ve sayfalama ile teklifleri listeler
+      parameters:
+      - description: Sayfa Numarası
+        in: query
+        name: page
+        type: integer
+      - description: Sayfa Başına Kayıt
+        in: query
+        name: limit
+        type: integer
+      - description: Durum Filtresi
+        in: query
+        name: status
+        type: string
+      - description: Müşteri Filtresi
+        in: query
+        name: customer
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Teklifleri Listele
+      tags:
+      - Quotations
+    post:
+      consumes:
+      - application/json
+      description: Yeni bir teklif oluşturur ve kaydeder
+      parameters:
+      - description: Teklif Bilgileri
+        in: body
+        name: quotation
+        required: true
+        schema:
+          $ref: '#/definitions/api_teklifYonetimi_internal_dto.CreateQuotationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Yeni Teklif Oluştur
+      tags:
+      - Quotations
+  /quotations/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Teklifi siler
+      parameters:
+      - description: Teklif ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Teklif Sil
+      tags:
+      - Quotations
+    get:
+      consumes:
+      - application/json
+      description: Teklif detayını getirir
+      parameters:
+      - description: Teklif ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Teklif Detayı
+      tags:
+      - Quotations
+    put:
+      consumes:
+      - application/json
+      description: Teklif içeriğini günceller
+      parameters:
+      - description: Teklif ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Güncelleme Bilgileri
+        in: body
+        name: quotation
+        required: true
+        schema:
+          $ref: '#/definitions/api_teklifYonetimi_internal_dto.UpdateQuotationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Teklif Güncelle
+      tags:
+      - Quotations
+  /users:
+    get:
+      consumes:
+      - application/json
+      description: Tüm kullanıcıları listeler
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Kullanıcıları Listele
+      tags:
+      - Users
+    post:
+      consumes:
+      - application/json
+      description: Yeni bir kullanıcı kaydı oluşturur
+      parameters:
+      - description: Kullanıcı Bilgileri
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/api_teklifYonetimi_internal_dto.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Yeni Kullanıcı Oluştur
+      tags:
+      - Users
+  /users/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Kullanıcıyı siler
+      parameters:
+      - description: Kullanıcı ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Kullanıcı Sil
+      tags:
+      - Users
+    get:
+      consumes:
+      - application/json
+      description: ID'ye göre kullanıcı detayını getirir
+      parameters:
+      - description: Kullanıcı ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Kullanıcı Detayı
+      tags:
+      - Users
+    put:
+      consumes:
+      - application/json
+      description: Kullanıcı bilgilerini günceller
+      parameters:
+      - description: Kullanıcı ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Güncelleme Bilgileri
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/api_teklifYonetimi_internal_dto.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api_teklifYonetimi_internal_api_response.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Kullanıcı Güncelle
+      tags:
+      - Users
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

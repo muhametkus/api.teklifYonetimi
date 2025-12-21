@@ -1,21 +1,21 @@
 package handlers
 
 import (
+	"bytes"
 	"net/http"
+	"path/filepath"
+	"strconv"
 
+	"html/template"
+
+	"api.teklifYonetimi/internal/api/response"
 	"api.teklifYonetimi/internal/dto"
 	"api.teklifYonetimi/internal/models"
 	"api.teklifYonetimi/internal/repository"
 	"api.teklifYonetimi/internal/services"
+	"api.teklifYonetimi/internal/utils"
 
 	"github.com/gin-gonic/gin"
-	"strconv"
-	"bytes"
-	"html/template"
-	"path/filepath"
-	
-	
-	
 )
 
 type QuotationHandler struct {
@@ -31,239 +31,428 @@ func NewQuotationHandler() *QuotationHandler {
 	}
 }
 
-// CreateQuotation
+//
+// CREATE QUOTATION
 // POST /quotations
+//
+// CreateQuotation godoc
+// @Summary      Yeni Teklif Oluştur
+// @Description  Yeni bir teklif oluşturur ve kaydeder
+// @Tags         Quotations
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        quotation body dto.CreateQuotationRequest true "Teklif Bilgileri"
+// @Success      201  {object} response.APIResponse
+// @Failure      400  {object} response.APIResponse
+// @Router       /quotations [post]
 func (h *QuotationHandler) CreateQuotation(c *gin.Context) {
-	var req dto.CreateQuotationRequest
 
-	// 1️⃣ JSON -> DTO
+	var req struct {
+		Title       string                 `json:"title" binding:"required"`
+		Customer    string                 `json:"customer" binding:"required"`
+		Description string                 `json:"description"`
+		Items       []models.QuotationItem `json:"items" binding:"required"`
+	}
+
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
+		status, res := response.Error(
+			http.StatusBadRequest,
+			"Geçersiz istek",
+			"VALIDATION_ERROR",
+		)
+		c.JSON(status, res)
 		return
 	}
 
-	// 2️⃣ JWT'den company_id al
-	companyIDValue, exists := c.Get("company_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"error":   "Company bilgisi bulunamadı",
-		})
-		return
-	}
+	companyID := c.MustGet("company_id").(uint)
+	userID := c.MustGet("user_id").(uint)
 
-	companyID := companyIDValue.(uint)
-
-	// 3️⃣ DTO -> Model (Item'lar)
-	var items []models.QuotationItem
-	for _, item := range req.Items {
-		items = append(items, models.QuotationItem{
-			ItemName:  item.ItemName,
-			Quantity:  item.Quantity,
-			UnitPrice: item.UnitPrice,
-		})
-	}
-
-	// 4️⃣ Service çağır
 	quotation, err := h.service.CreateQuotation(
 		companyID,
+		userID,
 		req.Title,
 		req.Customer,
 		req.Description,
-		items,
+		req.Items,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Teklif oluşturulamadı",
-		})
+		status, res := response.Error(
+			http.StatusBadRequest,
+			err.Error(),
+			"CREATE_QUOTATION_FAILED",
+		)
+		c.JSON(status, res)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"success": true,
-		"data":    quotation,
-	})
+	status, res := response.Created(
+		"Teklif başarıyla oluşturuldu",
+		quotation,
+	)
+	c.JSON(status, res)
 }
 
-// GetQuotations
+//
+// LIST QUOTATIONS (PAGINATION + FILTER + ROLE)
 // GET /quotations
-func (h *QuotationHandler) GetQuotations(c *gin.Context) {
-
-	companyIDValue, exists := c.Get("company_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"error":   "Company bilgisi bulunamadı",
-		})
-		return
-	}
-
-	companyID := companyIDValue.(uint)
-
-	quotations, err := h.service.GetCompanyQuotations(companyID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Teklifler alınamadı",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    quotations,
-	})
-}
-
-// UpdateQuotationStatus
-// PUT /quotations/:id/status
-func (h *QuotationHandler) UpdateQuotationStatus(c *gin.Context) {
-
-	idParam := c.Param("id")
-	quotationID, err := strconv.ParseUint(idParam, 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Geçersiz teklif id",
-		})
-		return
-	}
-
-	var req dto.UpdateQuotationStatusRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
-		return
-	}
-
-	companyID := c.MustGet("company_id").(uint)
-
-	err = h.service.UpdateQuotationStatus(
-		companyID,
-		uint(quotationID),
-		req.Status,
-	)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Teklif durumu güncellendi",
-	})
-}
-
-// GetQuotations
-// GET /quotations?page=1&limit=10
+//
+// GetQuotations godoc
+// @Summary      Teklifleri Listele
+// @Description  Filtreleme ve sayfalama ile teklifleri listeler
+// @Tags         Quotations
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        page query int false "Sayfa Numarası"
+// @Param        limit query int false "Sayfa Başına Kayıt"
+// @Param        status query string false "Durum Filtresi"
+// @Param        customer query string false "Müşteri Filtresi"
+// @Success      200  {object} response.APIResponse
+// @Failure      500  {object} response.APIResponse
+// @Router       /quotations [get]
 func (h *QuotationHandler) GetQuotations(c *gin.Context) {
 
 	companyID := c.MustGet("company_id").(uint)
+	userID := c.MustGet("user_id").(uint)
+	role := c.MustGet("role").(string)
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	statusFilter := c.Query("status")
+	customerFilter := c.Query("customer")
 
-	quotations, total, err := h.service.GetCompanyQuotationsPaginated(
+	quotations, total, err := h.service.GetFilteredPaginatedQuotations(
 		companyID,
+		userID,
+		role,
+		statusFilter,
+		customerFilter,
 		page,
 		limit,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Teklifler alınamadı",
-		})
+		status, res := response.Error(
+			http.StatusInternalServerError,
+			"Teklifler alınamadı",
+			"QUOTATION_LIST_FAILED",
+		)
+		c.JSON(status, res)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    quotations,
-		"meta": gin.H{
-			"page":  page,
-			"limit": limit,
-			"total": total,
+	totalPages := int((total + int64(limit) - 1) / int64(limit))
+
+	statusCode, res := response.Success(
+		"Teklifler başarıyla getirildi",
+		quotations,
+		gin.H{
+			"page":       page,
+			"limit":      limit,
+			"total":      total,
+			"totalPages": totalPages,
 		},
-	})
+	)
+
+	c.JSON(statusCode, res)
 }
 
-// GetQuotationPDF
+//
+// GET QUOTATION PDF
 // GET /quotations/:id/pdf
+//
 func (h *QuotationHandler) GetQuotationPDF(c *gin.Context) {
 
-	// 1️⃣ Parametre
+	// Param
 	idParam := c.Param("id")
 	quotationID, err := strconv.ParseUint(idParam, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Geçersiz teklif id",
-		})
+		status, res := response.Error(
+			http.StatusBadRequest,
+			"Geçersiz teklif id",
+			"INVALID_ID",
+		)
+		c.JSON(status, res)
 		return
 	}
 
-	// 2️⃣ JWT'den company_id
 	companyID := c.MustGet("company_id").(uint)
+	userID := c.MustGet("user_id").(uint)
+	role := c.MustGet("role").(string)
 
-	// 3️⃣ Teklifi al
 	quotation, err := h.service.GetQuotationForPDF(
 		companyID,
 		uint(quotationID),
 	)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"error":   "Teklif bulunamadı",
-		})
+		status, res := response.Error(
+			http.StatusNotFound,
+			"Teklif bulunamadı",
+			"QUOTATION_NOT_FOUND",
+		)
+		c.JSON(status, res)
 		return
 	}
 
-	// 4️⃣ HTML template render
-	templatePath, _ := filepath.Abs("internal/templates/quotation.html")
+	// OWNERSHIP CHECK (USER)
+	if role == "USER" && quotation.CreatedBy != userID {
+		status, res := response.Error(
+			http.StatusForbidden,
+			"Bu teklife erişim yetkiniz yok",
+			"FORBIDDEN",
+		)
+		c.JSON(status, res)
+		return
+	}
 
+	// CACHE CHECK
+	cacheKey := "quotation_" + idParam + "_" + string(quotation.Status)
+
+	if cachedPDF, ok := utils.GetPDF(cacheKey); ok {
+		c.Header("Content-Type", "application/pdf")
+		c.Header("Content-Disposition", "inline; filename=quotation.pdf")
+		c.Data(http.StatusOK, "application/pdf", cachedPDF)
+		return
+	}
+
+	// ViewModel
+	var logoBase64 string
+	if quotation.Company.Logo != nil {
+		logoBase64, _ = utils.ImageToBase64(*quotation.Company.Logo)
+	}
+
+	view := dto.QuotationPDFView{
+		Title:       quotation.Title,
+		Customer:    quotation.Customer,
+		Status:      string(quotation.Status),
+		Total:       quotation.Total,
+		Items:       quotation.Items,
+		CompanyName: quotation.Company.Name,
+		CompanyLogo: logoBase64,
+	}
+
+	// HTML render
+	templatePath, _ := filepath.Abs("internal/templates/quotation.html")
 	tmpl, err := template.ParseFiles(templatePath)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Template okunamadı",
-		})
+		status, res := response.Error(
+			http.StatusInternalServerError,
+			"Template okunamadı",
+			"TEMPLATE_ERROR",
+		)
+		c.JSON(status, res)
 		return
 	}
 
 	var htmlBuffer bytes.Buffer
-	err = tmpl.Execute(&htmlBuffer, quotation)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Template render edilemedi",
-		})
+	if err := tmpl.Execute(&htmlBuffer, view); err != nil {
+		status, res := response.Error(
+			http.StatusInternalServerError,
+			"Template render edilemedi",
+			"TEMPLATE_RENDER_ERROR",
+		)
+		c.JSON(status, res)
 		return
 	}
 
-	// 5️⃣ HTML → PDF
-	pdfPath := "quotation_" + idParam + ".pdf"
+	// HTML → PDF
+	pdfBytes, err := utils.GeneratePDFFromHTMLBytes(htmlBuffer.String())
+	if err != nil {
+		status, res := response.Error(
+			http.StatusInternalServerError,
+			"PDF oluşturulamadı",
+			"PDF_GENERATE_ERROR",
+		)
+		c.JSON(status, res)
+		return
+	}
 
-	err = utils.GeneratePDFFromHTML(
-		htmlBuffer.String(),
-		pdfPath,
+	// CACHE WRITE
+	utils.SetPDF(cacheKey, pdfBytes)
+
+	// RESPONSE
+	c.Header("Content-Type", "application/pdf")
+	c.Header("Content-Disposition", "inline; filename=quotation.pdf")
+	c.Data(http.StatusOK, "application/pdf", pdfBytes)
+}
+
+//
+// UPDATE STATUS
+// PUT /quotations/:id/status
+//
+func (h *QuotationHandler) UpdateQuotationStatus(c *gin.Context) {
+
+	idParam := c.Param("id")
+	quotationID, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		status, res := response.Error(
+			http.StatusBadRequest,
+			"Geçersiz ID",
+			"INVALID_ID",
+		)
+		c.JSON(status, res)
+		return
+	}
+
+	var req struct {
+		Status string `json:"status" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		status, res := response.Error(
+			http.StatusBadRequest,
+			"Status zorunludur",
+			"VALIDATION_ERROR",
+		)
+		c.JSON(status, res)
+		return
+	}
+
+	companyID := c.MustGet("company_id").(uint)
+
+	if err := h.service.UpdateQuotationStatus(companyID, uint(quotationID), req.Status); err != nil {
+		status, res := response.Error(
+			http.StatusInternalServerError,
+			"Durum güncellenemedi",
+			"UPDATE_FAILED",
+		)
+		c.JSON(status, res)
+		return
+	}
+
+	status, res := response.Success(
+		"Durum güncellendi",
+		nil,
+		nil,
+	)
+	c.JSON(status, res)
+}
+
+// GetQuotationByID
+// GET /quotations/:id
+// GetQuotationByID godoc
+// @Summary      Teklif Detayı
+// @Description  Teklif detayını getirir
+// @Tags         Quotations
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path int true "Teklif ID"
+// @Success      200  {object} response.APIResponse
+// @Failure      404  {object} response.APIResponse
+// @Router       /quotations/{id} [get]
+func (h *QuotationHandler) GetQuotationByID(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		status, res := response.Error(http.StatusBadRequest, "Geçersiz ID", "INVALID_ID")
+		c.JSON(status, res)
+		return
+	}
+
+	companyID := c.MustGet("company_id").(uint)
+
+	quotation, err := h.service.GetQuotationByID(uint(id), companyID)
+	if err != nil {
+		status, res := response.Error(http.StatusNotFound, "Teklif bulunamadı", "NOT_FOUND")
+		c.JSON(status, res)
+		return
+	}
+
+	status, res := response.Success("Teklif detayı", quotation, nil)
+	c.JSON(status, res)
+}
+
+// UpdateQuotation
+// PUT /quotations/:id
+// UpdateQuotation godoc
+// @Summary      Teklif Güncelle
+// @Description  Teklif içeriğini günceller
+// @Tags         Quotations
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path int true "Teklif ID"
+// @Param        quotation body dto.UpdateQuotationRequest true "Güncelleme Bilgileri"
+// @Success      200  {object} response.APIResponse
+// @Failure      400  {object} response.APIResponse
+// @Router       /quotations/{id} [put]
+func (h *QuotationHandler) UpdateQuotation(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		status, res := response.Error(http.StatusBadRequest, "Geçersiz ID", "INVALID_ID")
+		c.JSON(status, res)
+		return
+	}
+
+	var req dto.UpdateQuotationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		status, res := response.Error(http.StatusBadRequest, err.Error(), "VALIDATION_ERROR")
+		c.JSON(status, res)
+		return
+	}
+
+	companyID := c.MustGet("company_id").(uint)
+	userID := c.MustGet("user_id").(uint)
+	role := c.MustGet("role").(string)
+
+	// Convert DTO items to Model items
+	var items []models.QuotationItem
+	for _, itemReq := range req.Items {
+		items = append(items, models.QuotationItem{
+			ItemName:  itemReq.ItemName,
+			Quantity:  itemReq.Quantity,
+			UnitPrice: itemReq.UnitPrice,
+		})
+	}
+
+	quotation, err := h.service.UpdateQuotation(
+		uint(id), companyID, userID, role,
+		req.Title, req.Customer, req.Description, items,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "PDF oluşturulamadı",
-		})
+		status, res := response.Error(http.StatusInternalServerError, err.Error(), "UPDATE_FAILED")
+		c.JSON(status, res)
 		return
 	}
 
-	// 6️⃣ PDF'i response olarak gönder
-	c.File(pdfPath)
+	status, res := response.Success("Teklif güncellendi", quotation, nil)
+	c.JSON(status, res)
+}
+
+// DeleteQuotation
+// DELETE /quotations/:id
+// DeleteQuotation godoc
+// @Summary      Teklif Sil
+// @Description  Teklifi siler
+// @Tags         Quotations
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path int true "Teklif ID"
+// @Success      200  {object} response.APIResponse
+// @Failure      404  {object} response.APIResponse
+// @Router       /quotations/{id} [delete]
+func (h *QuotationHandler) DeleteQuotation(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		status, res := response.Error(http.StatusBadRequest, "Geçersiz ID", "INVALID_ID")
+		c.JSON(status, res)
+		return
+	}
+
+	companyID := c.MustGet("company_id").(uint)
+	userID := c.MustGet("user_id").(uint)
+	role := c.MustGet("role").(string)
+
+	if err := h.service.DeleteQuotation(uint(id), companyID, userID, role); err != nil {
+		status, res := response.Error(http.StatusInternalServerError, err.Error(), "DELETE_FAILED")
+		c.JSON(status, res)
+		return
+	}
+
+	status, res := response.Success("Teklif silindi", nil, nil)
+	c.JSON(status, res)
 }

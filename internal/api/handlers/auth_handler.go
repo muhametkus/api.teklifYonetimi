@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"api.teklifYonetimi/internal/api/response"
 	"api.teklifYonetimi/internal/dto"
 	"api.teklifYonetimi/internal/repository"
 	"api.teklifYonetimi/internal/services"
@@ -25,29 +26,33 @@ func NewAuthHandler() *AuthHandler {
 
 // Login
 // POST /auth/login
+// Login godoc
+// @Summary      Kullanıcı Girişi
+// @Description  Email ve şifre ile giriş yapar, JWT token döner
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        login body dto.LoginRequest true "Giriş Bilgileri"
+// @Success      200  {object} response.APIResponse
+// @Failure      400  {object} response.APIResponse
+// @Failure      401  {object} response.APIResponse
+// @Router       /auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req dto.LoginRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
+		status, res := response.Error(http.StatusBadRequest, err.Error(), "VALIDATION_ERROR")
+		c.JSON(status, res)
 		return
 	}
 
 	token, user, err := h.authService.Login(req.Email, req.Password)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
+		status, res := response.Error(http.StatusUnauthorized, err.Error(), "LOGIN_FAILED")
+		c.JSON(status, res)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"token":   token,
-		"user":    user,
-	})
+	status, res := response.Success("Giriş başarılı", gin.H{"token": token, "user": user}, nil)
+	c.JSON(status, res)
 }

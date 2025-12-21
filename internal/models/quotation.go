@@ -13,6 +13,8 @@ type Quotation struct {
     CompanyID   uint
     Company     Company
 
+    CreatedBy   uint
+
     Items       []QuotationItem
 
     CreatedAt   time.Time

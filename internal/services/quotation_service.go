@@ -1,112 +1,222 @@
 package services
 
 import (
+	"errors"
+
 	"api.teklifYonetimi/internal/models"
 	"api.teklifYonetimi/internal/repository"
-	"errors"
 )
 
 type QuotationService struct {
 	repo *repository.QuotationRepository
 }
 
+// Constructor
 func NewQuotationService(repo *repository.QuotationRepository) *QuotationService {
 	return &QuotationService{
 		repo: repo,
 	}
 }
 
-// CreateQuotation
+//
+// CREATE QUOTATION
+//
+
 func (s *QuotationService) CreateQuotation(
 	companyID uint,
+	userID uint,
 	title string,
 	customer string,
 	description string,
-	itemRequests []models.QuotationItem,
+	items []models.QuotationItem,
 ) (*models.Quotation, error) {
 
-	var total float64
-	var items []models.QuotationItem
-
-	// 1️⃣ Item'ları hazırla + satır toplamı hesapla
-	for _, item := range itemRequests {
-		itemTotal := float64(item.Quantity) * item.UnitPrice
-		item.Total = itemTotal
-
-		total += itemTotal
-		items = append(items, item)
+	if len(items) == 0 {
+		return nil, errors.New("en az bir kalem eklenmelidir")
 	}
 
-	// 2️⃣ Quotation oluştur
+	var total float64
+	for i := range items {
+		items[i].Total = float64(items[i].Quantity) * items[i].UnitPrice
+		total += items[i].Total
+	}
+
 	quotation := &models.Quotation{
 		Title:       title,
 		Customer:    customer,
-		Description: description,
+		Description: &description,
 		Status:      models.QuotationStatus("PENDING"),
 		Total:       total,
 		CompanyID:   companyID,
+		CreatedBy:   userID,
+		Items:       items,
 	}
 
-	// 3️⃣ Repository ile transaction
-	if err := s.repo.CreateQuotationWithItems(quotation, items); err != nil {
+	if err := s.repo.Create(quotation); err != nil {
 		return nil, err
 	}
 
 	return quotation, nil
 }
 
-// GetCompanyQuotations
-func (s *QuotationService) GetCompanyQuotations(companyID uint) ([]models.Quotation, error) {
-	return s.repo.FindAllByCompany(companyID)
+//
+// LIST QUOTATIONS (ROLE BASED)
+//
+
+func (s *QuotationService) GetQuotationsByRole(
+	companyID uint,
+	userID uint,
+	role string,
+) ([]models.Quotation, error) {
+
+	// ADMIN → company'deki tüm teklifler
+	if role == "ADMIN" {
+		return s.repo.FindAllByCompany(companyID)
+	}
+
+	// USER → sadece kendi oluşturdukları
+	return s.repo.FindByCompanyAndUser(companyID, userID)
 }
 
+//
+// GET SINGLE QUOTATION (PDF / DETAIL)
+//
+
+func (s *QuotationService) GetQuotationForPDF(
+	companyID uint,
+	quotationID uint,
+) (*models.Quotation, error) {
+
+	return s.repo.FindByIDWithItems(
+		quotationID,
+		companyID,
+	)
+}
+
+// GetFilteredPaginatedQuotations
+func (s *QuotationService) GetFilteredPaginatedQuotations(
+	companyID uint,
+	userID uint,
+	role string,
+	status string,
+	customer string,
+	page int,
+	limit int,
+) ([]models.Quotation, int64, error) {
+
+	if page < 1 {
+		page = 1
+	}
+	if limit <= 0 || limit > 100 {
+		limit = 10
+	}
+
+	offset := (page - 1) * limit
+
+	if role == "ADMIN" {
+		return s.repo.FindPaginatedFilteredByCompany(
+			companyID,
+			status,
+			customer,
+			limit,
+			offset,
+		)
+	}
+
+	return s.repo.FindPaginatedFilteredByCompanyAndUser(
+		companyID,
+		userID,
+		status,
+		customer,
+		limit,
+		offset,
+	)
+}
 
 // UpdateQuotationStatus
 func (s *QuotationService) UpdateQuotationStatus(
 	companyID uint,
 	quotationID uint,
-	newStatus string,
+	status string,
 ) error {
-
-	// 1️⃣ Teklif bu company'e mi ait?
-	quotations, err := s.repo.FindAllByCompany(companyID)
-	if err != nil {
-		return err
-	}
-
-	var found bool
-	for _, q := range quotations {
-		if q.ID == quotationID {
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		return errors.New("teklif bulunamadı")
-	}
-
-	// 2️⃣ Status'u güncelle
-	return s.repo.UpdateStatus(
-		quotationID,
-		models.QuotationStatus(newStatus),
-	)
+	return s.repo.UpdateStatus(quotationID, models.QuotationStatus(status))
 }
 
-// GetCompanyQuotationsPaginated
-func (s *QuotationService) GetCompanyQuotationsPaginated(
-	companyID uint,
-	page int,
-	limit int,
-) ([]models.Quotation, int64, error) {
-
-	// güvenlik
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 10
-	}
-
-	return s.repo.FindAllByCompanyPaginated(companyID, page, limit)
+// GetQuotationByID
+func (s *QuotationService) GetQuotationByID(id, companyID uint) (*models.Quotation, error) {
+    return s.repo.FindByIDWithItems(id, companyID)
 }
+
+// UpdateQuotation
+func (s *QuotationService) UpdateQuotation(
+    id, companyID, userID uint,
+    role string,
+    title, customer, description string,
+    items []models.QuotationItem,
+) (*models.Quotation, error) {
+    
+    quotation, err := s.repo.FindByIDWithItems(id, companyID)
+    if err != nil {
+        return nil, err
+    }
+
+    // Authorization: Only Owner or Admin can update
+    if role != "ADMIN" && quotation.CreatedBy != userID {
+        return nil, errors.New("bu teklifi güncelleme yetkiniz yok")
+    }
+
+    // Update fields
+    if title != "" {
+        quotation.Title = title
+    }
+    if customer != "" {
+        quotation.Customer = customer
+    }
+    if description != "" {
+        quotation.Description = &description
+    }
+
+    // Update Items (Re-calculate total)
+    if len(items) > 0 {
+        // Delete old items
+        if err := s.repo.DeleteItemsByQuotationID(id); err != nil {
+            return nil, err
+        }
+        
+        var total float64
+        for i := range items {
+            items[i].QuotationID = id
+            items[i].Total = float64(items[i].Quantity) * items[i].UnitPrice
+            total += items[i].Total
+        }
+        quotation.Items = items
+        quotation.Total = total
+    }
+
+    if err := s.repo.Update(quotation); err != nil {
+        return nil, err
+    }
+
+    return quotation, nil
+}
+
+// DeleteQuotation
+func (s *QuotationService) DeleteQuotation(id, companyID, userID uint, role string) error {
+    quotation, err := s.repo.FindByIDWithItems(id, companyID)
+    if err != nil {
+        return err
+    }
+
+    // Authorization: Only Owner or Admin can delete
+    if role != "ADMIN" && quotation.CreatedBy != userID {
+        return errors.New("bu teklifi silme yetkiniz yok")
+    }
+
+    // Delete items first (or rely on cascade if configured, but explicit is safer here)
+    if err := s.repo.DeleteItemsByQuotationID(id); err != nil {
+        return err
+    }
+
+    return s.repo.Delete(id)
+}
+
