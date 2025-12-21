@@ -71,13 +71,36 @@ func (s *UserService) CreateUser(
 }
 
 // GetAllUsers
-func (s *UserService) GetAllUsers() ([]models.User, error) {
-    return s.repo.FindAll()
+func (s *UserService) GetAllUsers(requesterRole string, requesterCompanyID *uint) ([]models.User, error) {
+    if requesterRole == "SUPER_ADMIN" {
+        return s.repo.FindAll()
+    }
+    
+    if requesterCompanyID != nil {
+        return s.repo.FindByCompanyID(*requesterCompanyID)
+    }
+
+    // Eğer companyID yoksa ve SUPER_ADMIN değilse, boş dön veya hata fırlat
+    // Şimdilik boş liste dönelim
+    return []models.User{}, nil
 }
 
 // GetUserByID
-func (s *UserService) GetUserByID(id uint) (*models.User, error) {
-    return s.repo.FindByID(id)
+func (s *UserService) GetUserByID(id uint, requesterRole string, requesterCompanyID *uint) (*models.User, error) {
+    user, err := s.repo.FindByID(id)
+    if err != nil {
+        return nil, err
+    }
+
+    if requesterRole == "SUPER_ADMIN" {
+        return user, nil
+    }
+
+    if requesterCompanyID != nil && user.CompanyID != nil && *user.CompanyID == *requesterCompanyID {
+        return user, nil
+    }
+
+    return nil, errors.New("bu kullanıcıya erişim yetkiniz yok")
 }
 
 // UpdateUser

@@ -89,7 +89,17 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 // @Failure      500  {object} response.APIResponse
 // @Router       /users [get]
 func (h *UserHandler) GetUsers(c *gin.Context) {
-	users, err := h.service.GetAllUsers()
+	role, _ := c.Get("role")
+	companyID, _ := c.Get("company_id")
+
+	r, _ := role.(string)
+	var cID *uint
+	if companyID != nil {
+		id := companyID.(uint)
+		cID = &id
+	}
+
+	users, err := h.service.GetAllUsers(r, cID)
 	if err != nil {
 		status, res := response.Error(http.StatusInternalServerError, "User listesi alınamadı", "LIST_FAILED")
 		c.JSON(status, res)
@@ -127,7 +137,17 @@ func (h *UserHandler) GetUserByID(c *gin.Context) {
 		return
 	}
 
-	user, err := h.service.GetUserByID(uint(id))
+	role, _ := c.Get("role")
+	companyID, _ := c.Get("company_id")
+
+	r, _ := role.(string)
+	var cID *uint
+	if companyID != nil {
+		id := companyID.(uint)
+		cID = &id
+	}
+
+	user, err := h.service.GetUserByID(uint(id), r, cID)
 	if err != nil {
 		status, res := response.Error(http.StatusNotFound, "Kullanıcı bulunamadı", "NOT_FOUND")
 		c.JSON(status, res)

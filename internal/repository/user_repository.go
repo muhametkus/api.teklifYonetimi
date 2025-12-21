@@ -23,6 +23,13 @@ func (r *UserRepository) FindAll() ([]models.User, error) {
     return users, err
 }
 
+// FindByCompanyID
+func (r *UserRepository) FindByCompanyID(companyID uint) ([]models.User, error) {
+    var users []models.User
+    err := database.DB.Where("company_id = ?", companyID).Find(&users).Error
+    return users, err
+}
+
 // FindByEmail
 func (r *UserRepository) FindByEmail(email string) (*models.User, error) {
     var user models.User

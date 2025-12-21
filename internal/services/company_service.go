@@ -1,6 +1,7 @@
 package services
 
 import (
+    "errors"
     "api.teklifYonetimi/internal/models"
     "api.teklifYonetimi/internal/repository"
 )
@@ -36,14 +37,39 @@ func (s *CompanyService) CreateCompany(name string, logo *string) (*models.Compa
 
 // GetAllCompanies
 // Tüm company listesini getirir
-func (s *CompanyService) GetAllCompanies() ([]models.Company, error) {
-    return s.repo.FindAll()
+func (s *CompanyService) GetAllCompanies(requesterRole string, requesterCompanyID *uint) ([]models.Company, error) {
+    if requesterRole == "SUPER_ADMIN" {
+        return s.repo.FindAll()
+    }
+
+    if requesterCompanyID != nil {
+        company, err := s.repo.FindByID(*requesterCompanyID)
+        if err != nil {
+            return nil, err
+        }
+        return []models.Company{*company}, nil
+    }
+
+    return []models.Company{}, nil
 }
 
 // GetCompanyByID
 // ID ile company getirir
-func (s *CompanyService) GetCompanyByID(id uint) (*models.Company, error) {
-    return s.repo.FindByID(id)
+func (s *CompanyService) GetCompanyByID(id uint, requesterRole string, requesterCompanyID *uint) (*models.Company, error) {
+    company, err := s.repo.FindByID(id)
+    if err != nil {
+        return nil, err
+    }
+
+    if requesterRole == "SUPER_ADMIN" {
+        return company, nil
+    }
+
+    if requesterCompanyID != nil && id == *requesterCompanyID {
+        return company, nil
+    }
+
+    return nil, errors.New("bu şirkete erişim yetkiniz yok")
 }
 
 

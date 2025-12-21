@@ -76,7 +76,17 @@ func (h *CompanyHandler) CreateCompany(c *gin.Context) {
 // @Failure      500  {object} response.APIResponse
 // @Router       /companies [get]
 func (h *CompanyHandler) GetCompanies(c *gin.Context) {
-	companies, err := h.service.GetAllCompanies()
+	role, _ := c.Get("role")
+	companyID, _ := c.Get("company_id")
+
+	r, _ := role.(string)
+	var cID *uint
+	if companyID != nil {
+		id := companyID.(uint)
+		cID = &id
+	}
+
+	companies, err := h.service.GetAllCompanies(r, cID)
 	if err != nil {
 		status, res := response.Error(http.StatusInternalServerError, "Company listesi alınamadı", "LIST_FAILED")
 		c.JSON(status, res)
@@ -110,7 +120,17 @@ func (h *CompanyHandler) GetCompanyByID(c *gin.Context) {
 		return
 	}
 
-	company, err := h.service.GetCompanyByID(uint(id))
+	role, _ := c.Get("role")
+	companyID, _ := c.Get("company_id")
+
+	r, _ := role.(string)
+	var cID *uint
+	if companyID != nil {
+		id := companyID.(uint)
+		cID = &id
+	}
+
+	company, err := h.service.GetCompanyByID(uint(id), r, cID)
 	if err != nil {
 		status, res := response.Error(http.StatusNotFound, "Company bulunamadı", "NOT_FOUND")
 		c.JSON(status, res)
