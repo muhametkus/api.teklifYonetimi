@@ -29,6 +29,12 @@ func RequireRole(requiredRole string) gin.HandlerFunc {
 			return
 		}
 
+		// SUPER_ADMIN her yere erişebilir
+		if role == "SUPER_ADMIN" {
+			c.Next()
+			return
+		}
+
 		if role != requiredRole {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
 				"success": false,
