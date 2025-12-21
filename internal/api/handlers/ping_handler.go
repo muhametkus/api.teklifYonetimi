@@ -1,9 +1,30 @@
 package handlers
 
-import "github.com/gin-gonic/gin"
+import (
+	"api.teklifYonetimi/internal/database"
+	"github.com/gin-gonic/gin"
+)
 
 func PingHandler(c *gin.Context) {
-    c.JSON(200, gin.H{
-        "message": "pong",
-    })
+	sqlDB, err := database.DB.DB()
+	if err != nil {
+		c.JSON(500, gin.H{
+			"message": "DB object error",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	if err := sqlDB.Ping(); err != nil {
+		c.JSON(500, gin.H{
+			"message": "DB ping failed",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"message": "pong",
+		"db":      "connected",
+	})
 }
