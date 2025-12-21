@@ -2,6 +2,7 @@ package main
 
 import (
     "api.teklifYonetimi/internal/api/routes"
+    "api.teklifYonetimi/internal/api/middleware"
     "api.teklifYonetimi/internal/config"
     "api.teklifYonetimi/internal/database"
     _ "api.teklifYonetimi/docs"
@@ -34,9 +35,12 @@ func main() {
 	
 	database.RunMigrations()
 
-    r := gin.Default()
+	r := gin.Default()
 
-    routes.RegisterRoutes(r)
+	// CORS Middleware
+	r.Use(middleware.CORSMiddleware())
+
+	routes.RegisterRoutes(r)
 
     r.Run(":" + cfg.ServerPort)
 }
