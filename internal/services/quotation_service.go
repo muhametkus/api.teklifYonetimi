@@ -69,8 +69,8 @@ func (s *QuotationService) GetQuotationsByRole(
 	role string,
 ) ([]models.Quotation, error) {
 
-	// ADMIN → company'deki tüm teklifler
-	if role == "ADMIN" {
+	// ADMIN/SUPER_ADMIN → company'deki tüm teklifler
+	if role == "ADMIN" || role == "SUPER_ADMIN" {
 		return s.repo.FindAllByCompany(companyID)
 	}
 
@@ -113,7 +113,7 @@ func (s *QuotationService) GetFilteredPaginatedQuotations(
 
 	offset := (page - 1) * limit
 
-	if role == "ADMIN" {
+	if role == "ADMIN" || role == "SUPER_ADMIN" {
 		return s.repo.FindPaginatedFilteredByCompany(
 			companyID,
 			status,
@@ -161,7 +161,7 @@ func (s *QuotationService) UpdateQuotation(
     }
 
     // Authorization: Only Owner or Admin can update
-    if role != "ADMIN" && quotation.CreatedBy != userID {
+    if role != "ADMIN" && role != "SUPER_ADMIN" && quotation.CreatedBy != userID {
         return nil, errors.New("bu teklifi güncelleme yetkiniz yok")
     }
 
@@ -208,7 +208,7 @@ func (s *QuotationService) DeleteQuotation(id, companyID, userID uint, role stri
     }
 
     // Authorization: Only Owner or Admin can delete
-    if role != "ADMIN" && quotation.CreatedBy != userID {
+    if role != "ADMIN" && role != "SUPER_ADMIN" && quotation.CreatedBy != userID {
         return errors.New("bu teklifi silme yetkiniz yok")
     }
 
@@ -219,4 +219,3 @@ func (s *QuotationService) DeleteQuotation(id, companyID, userID uint, role stri
 
     return s.repo.Delete(id)
 }
-

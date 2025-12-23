@@ -56,7 +56,7 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		if user.CompanyID == nil {
+		if user.CompanyID == nil && user.Role != "SUPER_ADMIN" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"success": false,
 				"error":   "Kullanıcının company bilgisi yok",
@@ -67,7 +67,9 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 		// 5) Context'e user bilgilerini koy
 		c.Set("user_id", user.ID)
 		c.Set("role", string(user.Role))
-		c.Set("company_id", *user.CompanyID)
+		if user.CompanyID != nil {
+			c.Set("company_id", *user.CompanyID)
+		}
 
 		c.Next()
 	}
